@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class ProductTest extends TestCase
@@ -99,5 +100,49 @@ class ProductTest extends TestCase
             ->assertStatus(204);
 
         $this->assertDatabaseMissing('products', ['id' => $product->id]);
+    }
+
+    public function test_product_show_is_cached(): void
+    {
+        $product = Product::factory()->create();
+        $cacheKey = "products:show:{$product->id}";
+
+        $this->assertFalse(Cache::has($cacheKey));
+
+        $this->getJson("/api/products/{$product->id}")->assertStatus(200);
+
+        $this->assertTrue(Cache::has($cacheKey));
+    }
+
+    public function test_cache_is_cleared_after_product_update(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = Product::factory()->create(['name' => 'Old Name']);
+        $cacheKey = "products:show:{$product->id}";
+
+        $this->getJson("/api/products/{$product->id}");
+        $this->assertTrue(Cache::has($cacheKey));
+
+        $this->actingAs($admin)
+            ->putJson("/api/products/{$product->id}", ['name' => 'New Name'])
+            ->assertStatus(200);
+
+        $this->assertFalse(Cache::has($cacheKey));
+    }
+
+    public function test_cache_is_cleared_after_product_delete(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $product = Product::factory()->create();
+        $cacheKey = "products:show:{$product->id}";
+
+        $this->getJson("/api/products/{$product->id}");
+        $this->assertTrue(Cache::has($cacheKey));
+
+        $this->actingAs($admin)
+            ->deleteJson("/api/products/{$product->id}")
+            ->assertStatus(204);
+
+        $this->assertFalse(Cache::has($cacheKey));
     }
 }

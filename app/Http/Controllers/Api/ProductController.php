@@ -8,6 +8,7 @@ use App\Http\Requests\Product\UpdateProductRequest;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use OpenApi\Attributes as OA;
 
@@ -27,17 +28,21 @@ class ProductController extends Controller
     )]
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with('category')->active();
+        $cacheKey = 'products:list:' . md5(serialize($request->only(['search', 'category_id', 'per_page', 'page'])));
 
-        if ($request->filled('search')) {
-            $query->search($request->search);
-        }
+        $products = Cache::remember($cacheKey, 60, function () use ($request) {
+            $query = Product::with('category')->active();
 
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
+            if ($request->filled('search')) {
+                $query->search($request->search);
+            }
 
-        $products = $query->latest()->paginate($request->integer('per_page', 15));
+            if ($request->filled('category_id')) {
+                $query->where('category_id', $request->category_id);
+            }
+
+            return $query->latest()->paginate($request->integer('per_page', 15));
+        });
 
         return response()->json($products);
     }
@@ -54,7 +59,11 @@ class ProductController extends Controller
     )]
     public function show(Product $product): JsonResponse
     {
-        return response()->json($product->load('category'));
+        $data = Cache::remember("products:show:{$product->id}", 1800, function () use ($product) {
+            return $product->load('category');
+        });
+
+        return response()->json($data);
     }
 
     #[OA\Post(
@@ -87,6 +96,8 @@ class ProductController extends Controller
 
         $product = Product::create($data);
 
+        Cache::forget("products:show:{$product->id}");
+
         return response()->json($product->load('category'), 201);
     }
 
@@ -117,6 +128,8 @@ class ProductController extends Controller
 
         $product->update($data);
 
+        Cache::forget("products:show:{$product->id}");
+
         return response()->json($product->load('category'));
     }
 
@@ -133,6 +146,8 @@ class ProductController extends Controller
     )]
     public function destroy(Product $product): JsonResponse
     {
+        Cache::forget("products:show:{$product->id}");
+
         $product->delete();
 
         return response()->json(null, 204);
