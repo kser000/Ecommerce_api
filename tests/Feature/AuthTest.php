@@ -20,7 +20,8 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonStructure(['token', 'user' => ['id', 'name', 'email', 'role']]);
+            ->assertJsonStructure(['token', 'user' => ['id', 'name', 'email', 'role']])
+            ->assertJsonMissingPath('user.password');
 
         $this->assertDatabaseHas('users', ['email' => 'test@example.com']);
     }
@@ -81,6 +82,6 @@ class AuthTest extends TestCase
         $this->actingAs($user)
             ->getJson('/api/auth/me')
             ->assertStatus(200)
-            ->assertJson(['email' => $user->email]);
+            ->assertJsonPath('data.email', $user->email);
     }
 }

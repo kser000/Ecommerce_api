@@ -19,7 +19,7 @@ class ProductTest extends TestCase
 
         $this->getJson('/api/products')
             ->assertStatus(200)
-            ->assertJsonStructure(['data', 'total', 'per_page']);
+            ->assertJsonStructure(['data', 'meta' => ['total', 'per_page']]);
     }
 
     public function test_products_can_be_searched(): void
@@ -34,7 +34,7 @@ class ProductTest extends TestCase
 
         $this->getJson('/api/products?search=headphones')
             ->assertStatus(200)
-            ->assertJsonPath('total', 1);
+            ->assertJsonPath('meta.total', 1);
     }
 
     public function test_anyone_can_view_single_product(): void
@@ -43,7 +43,7 @@ class ProductTest extends TestCase
 
         $this->getJson("/api/products/{$product->id}")
             ->assertStatus(200)
-            ->assertJson(['id' => $product->id]);
+            ->assertJsonPath('data.id', $product->id);
     }
 
     public function test_guest_cannot_create_product(): void
@@ -74,7 +74,7 @@ class ProductTest extends TestCase
                 'category_id' => $category->id,
             ])
             ->assertStatus(201)
-            ->assertJsonPath('name', 'Laravel in Action');
+            ->assertJsonPath('data.name', 'Laravel in Action');
 
         $this->assertDatabaseHas('products', ['name' => 'Laravel in Action']);
     }
@@ -87,7 +87,7 @@ class ProductTest extends TestCase
         $this->actingAs($admin)
             ->putJson("/api/products/{$product->id}", ['price' => 200])
             ->assertStatus(200)
-            ->assertJsonPath('price', '200.00');
+            ->assertJsonPath('data.price', '200.00');
     }
 
     public function test_admin_can_delete_product(): void

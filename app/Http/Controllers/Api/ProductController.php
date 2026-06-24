@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
+use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,7 @@ class ProductController extends Controller
         ],
         responses: [new OA\Response(response: 200, description: 'Paginated product list')]
     )]
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): mixed
     {
         $cacheKey = 'products:list:' . md5(serialize($request->only(['search', 'category_id', 'per_page', 'page'])));
 
@@ -44,7 +45,7 @@ class ProductController extends Controller
             return $query->latest()->paginate($request->integer('per_page', 15));
         });
 
-        return response()->json($products);
+        return ProductResource::collection($products);
     }
 
     #[OA\Get(
@@ -57,13 +58,13 @@ class ProductController extends Controller
             new OA\Response(response: 404, description: 'Not found'),
         ]
     )]
-    public function show(Product $product): JsonResponse
+    public function show(Product $product): mixed
     {
         $data = Cache::remember("products:show:{$product->id}", 1800, function () use ($product) {
             return $product->load('category');
         });
 
-        return response()->json($data);
+        return new ProductResource($data);
     }
 
     #[OA\Post(
@@ -89,7 +90,7 @@ class ProductController extends Controller
             new OA\Response(response: 403, description: 'Forbidden'),
         ]
     )]
-    public function store(StoreProductRequest $request): JsonResponse
+    public function store(StoreProductRequest $request): mixed
     {
         $data = $request->validated();
         $data['slug'] = $data['slug'] ?? Str::slug($data['name']);
@@ -98,7 +99,7 @@ class ProductController extends Controller
 
         Cache::forget("products:show:{$product->id}");
 
-        return response()->json($product->load('category'), 201);
+        return (new ProductResource($product->load('category')))->response()->setStatusCode(201);
     }
 
     #[OA\Put(
@@ -118,7 +119,7 @@ class ProductController extends Controller
             new OA\Response(response: 403, description: 'Forbidden'),
         ]
     )]
-    public function update(UpdateProductRequest $request, Product $product): JsonResponse
+    public function update(UpdateProductRequest $request, Product $product): mixed
     {
         $data = $request->validated();
 
@@ -130,7 +131,7 @@ class ProductController extends Controller
 
         Cache::forget("products:show:{$product->id}");
 
-        return response()->json($product->load('category'));
+        return new ProductResource($product->load('category'));
     }
 
     #[OA\Delete(
@@ -144,7 +145,7 @@ class ProductController extends Controller
             new OA\Response(response: 403, description: 'Forbidden'),
         ]
     )]
-    public function destroy(Product $product): JsonResponse
+    public function destroy(Product $product): mixed
     {
         Cache::forget("products:show:{$product->id}");
 

@@ -55,10 +55,10 @@ class OrderTest extends TestCase
         $response = $this->actingAs($this->customer)
             ->postJson('/api/orders')
             ->assertStatus(201)
-            ->assertJsonStructure(['id', 'status', 'total_amount', 'items']);
+            ->assertJsonStructure(['data' => ['id', 'status', 'total_amount', 'items']]);
 
-        $this->assertEquals('pending', $response->json('status'));
-        $this->assertEquals('300.00', $response->json('total_amount'));
+        $this->assertEquals('pending', $response->json('data.status'));
+        $this->assertEquals('300.00', $response->json('data.total_amount'));
 
         $this->assertEquals(7, $this->product->fresh()->stock);
     }
@@ -75,7 +75,7 @@ class OrderTest extends TestCase
 
         $this->actingAs($this->customer)
             ->getJson('/api/cart')
-            ->assertJsonPath('items', []);
+            ->assertJsonPath('data.items', []);
     }
 
     public function test_cannot_checkout_when_stock_insufficient(): void
@@ -103,7 +103,7 @@ class OrderTest extends TestCase
         $this->actingAs($this->customer)
             ->getJson('/api/orders')
             ->assertStatus(200)
-            ->assertJsonPath('total', 1);
+            ->assertJsonPath('meta.total', 1);
     }
 
     public function test_customer_cannot_view_another_users_order(): void
@@ -114,7 +114,7 @@ class OrderTest extends TestCase
             ->postJson('/api/cart/items', ['product_id' => $this->product->id, 'quantity' => 1]);
 
         $orderResponse = $this->actingAs($otherUser)->postJson('/api/orders');
-        $orderId = $orderResponse->json('id');
+        $orderId = $orderResponse->json('data.id');
 
         $this->actingAs($this->customer)
             ->getJson("/api/orders/{$orderId}")
@@ -127,12 +127,12 @@ class OrderTest extends TestCase
             ->postJson('/api/cart/items', ['product_id' => $this->product->id, 'quantity' => 1]);
 
         $orderResponse = $this->actingAs($this->customer)->postJson('/api/orders');
-        $orderId = $orderResponse->json('id');
+        $orderId = $orderResponse->json('data.id');
 
         $this->actingAs($this->admin)
             ->patchJson("/api/orders/{$orderId}/status", ['status' => 'paid'])
             ->assertStatus(200)
-            ->assertJsonPath('status', 'paid');
+            ->assertJsonPath('data.status', 'paid');
     }
 
     public function test_invalid_status_transition_is_rejected(): void
@@ -141,7 +141,7 @@ class OrderTest extends TestCase
             ->postJson('/api/cart/items', ['product_id' => $this->product->id, 'quantity' => 1]);
 
         $orderResponse = $this->actingAs($this->customer)->postJson('/api/orders');
-        $orderId = $orderResponse->json('id');
+        $orderId = $orderResponse->json('data.id');
 
         $this->actingAs($this->admin)
             ->patchJson("/api/orders/{$orderId}/status", ['status' => 'delivered'])

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,7 +37,7 @@ class AuthController extends Controller
             new OA\Response(response: 422, description: 'Validation error'),
         ]
     )]
-    public function register(RegisterRequest $request): JsonResponse
+    public function register(RegisterRequest $request): mixed
     {
         $user = User::create([
             'name'     => $request->name,
@@ -49,7 +50,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Registration successful.',
-            'user'    => $user,
+            'user'    => new UserResource($user),
             'token'   => $token,
         ], 201);
     }
@@ -73,7 +74,7 @@ class AuthController extends Controller
             new OA\Response(response: 422, description: 'Invalid credentials'),
         ]
     )]
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginRequest $request): mixed
     {
         $user = User::where('email', $request->email)->first();
 
@@ -87,7 +88,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Login successful.',
-            'user'    => $user,
+            'user'    => new UserResource($user),
             'token'   => $token,
         ]);
     }
@@ -102,7 +103,7 @@ class AuthController extends Controller
             new OA\Response(response: 401, description: 'Unauthenticated'),
         ]
     )]
-    public function logout(Request $request): JsonResponse
+    public function logout(Request $request): mixed
     {
         $token = $request->user()->currentAccessToken();
         if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
@@ -122,8 +123,8 @@ class AuthController extends Controller
             new OA\Response(response: 401, description: 'Unauthenticated'),
         ]
     )]
-    public function me(Request $request): JsonResponse
+    public function me(Request $request): mixed
     {
-        return response()->json($request->user());
+        return new UserResource($request->user());
     }
 }

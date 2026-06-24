@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\JsonResponse;
@@ -21,7 +22,7 @@ class OrderController extends Controller
         tags: ['Orders'],
         responses: [new OA\Response(response: 200, description: 'Order list')]
     )]
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): mixed
     {
         $orders = $request->user()
             ->orders()
@@ -29,7 +30,7 @@ class OrderController extends Controller
             ->latest()
             ->paginate(15);
 
-        return response()->json($orders);
+        return OrderResource::collection($orders);
     }
 
     #[OA\Get(
@@ -44,13 +45,13 @@ class OrderController extends Controller
             new OA\Response(response: 404, description: 'Not found'),
         ]
     )]
-    public function show(Request $request, Order $order): JsonResponse
+    public function show(Request $request, Order $order): mixed
     {
         if ($order->user_id !== $request->user()->id && ! $request->user()->isAdmin()) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        return response()->json($order->load('items.product'));
+        return new OrderResource($order->load('items'));
     }
 
     #[OA\Post(
@@ -68,7 +69,7 @@ class OrderController extends Controller
             new OA\Response(response: 422, description: 'Cart empty or insufficient stock'),
         ]
     )]
-    public function store(Request $request): JsonResponse
+    public function store(Request $request): mixed
     {
         $request->validate([
             'note' => ['nullable', 'string', 'max:500'],
@@ -76,7 +77,7 @@ class OrderController extends Controller
 
         $order = $this->orderService->checkout($request->user(), $request->note);
 
-        return response()->json($order, 201);
+        return (new OrderResource($order))->response()->setStatusCode(201);
     }
 
     #[OA\Patch(
@@ -99,7 +100,7 @@ class OrderController extends Controller
             new OA\Response(response: 422, description: 'Invalid status transition'),
         ]
     )]
-    public function updateStatus(Request $request, Order $order): JsonResponse
+    public function updateStatus(Request $request, Order $order): mixed
     {
         $request->validate([
             'status' => ['required', 'in:paid,shipped,delivered,cancelled'],
@@ -107,6 +108,6 @@ class OrderController extends Controller
 
         $order = $this->orderService->updateStatus($order, $request->status);
 
-        return response()->json($order);
+        return new OrderResource($order->load('items'));
     }
 }

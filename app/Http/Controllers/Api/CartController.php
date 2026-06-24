@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\CartItemResource;
+use App\Http\Resources\CartResource;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Services\CartService;
@@ -22,12 +24,12 @@ class CartController extends Controller
         tags: ['Cart'],
         responses: [new OA\Response(response: 200, description: 'Cart with items')]
     )]
-    public function show(Request $request): JsonResponse
+    public function show(Request $request): mixed
     {
         $cart = $this->cartService->getOrCreateCart($request->user());
         $cart->load('items.product');
 
-        return response()->json($cart);
+        return new CartResource($cart);
     }
 
     #[OA\Post(
@@ -50,7 +52,7 @@ class CartController extends Controller
             new OA\Response(response: 422, description: 'Insufficient stock or invalid product'),
         ]
     )]
-    public function addItem(Request $request): JsonResponse
+    public function addItem(Request $request): mixed
     {
         $data = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
@@ -60,7 +62,7 @@ class CartController extends Controller
         $product = Product::findOrFail($data['product_id']);
         $item = $this->cartService->addItem($request->user(), $product, $data['quantity']);
 
-        return response()->json($item, 201);
+        return (new CartItemResource($item))->response()->setStatusCode(201);
     }
 
     #[OA\Put(
@@ -78,7 +80,7 @@ class CartController extends Controller
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
         responses: [new OA\Response(response: 200, description: 'Item updated')]
     )]
-    public function updateItem(Request $request, CartItem $cartItem): JsonResponse
+    public function updateItem(Request $request, CartItem $cartItem): mixed
     {
         $data = $request->validate([
             'quantity' => ['required', 'integer', 'min:1'],
@@ -86,7 +88,7 @@ class CartController extends Controller
 
         $item = $this->cartService->updateItem($request->user(), $cartItem, $data['quantity']);
 
-        return response()->json($item);
+        return new CartItemResource($item);
     }
 
     #[OA\Delete(
@@ -97,7 +99,7 @@ class CartController extends Controller
         parameters: [new OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))],
         responses: [new OA\Response(response: 204, description: 'Item removed')]
     )]
-    public function removeItem(Request $request, CartItem $cartItem): JsonResponse
+    public function removeItem(Request $request, CartItem $cartItem): mixed
     {
         $this->cartService->removeItem($request->user(), $cartItem);
 
@@ -111,7 +113,7 @@ class CartController extends Controller
         tags: ['Cart'],
         responses: [new OA\Response(response: 204, description: 'Cart cleared')]
     )]
-    public function clear(Request $request): JsonResponse
+    public function clear(Request $request): mixed
     {
         $this->cartService->clearCart($request->user());
 
