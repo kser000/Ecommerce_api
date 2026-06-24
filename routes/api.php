@@ -8,8 +8,8 @@ use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
-    Route::post('register', [AuthController::class, 'register']);
-    Route::post('login', [AuthController::class, 'login']);
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:register');
+    Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
@@ -17,11 +17,11 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-Route::get('products', [ProductController::class, 'index']);
-Route::get('products/{product}', [ProductController::class, 'show']);
-Route::get('categories', [CategoryController::class, 'index']);
+Route::get('products', [ProductController::class, 'index'])->middleware('throttle:api');
+Route::get('products/{product}', [ProductController::class, 'show'])->middleware('throttle:api');
+Route::get('categories', [CategoryController::class, 'index'])->middleware('throttle:api');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('cart', [CartController::class, 'show']);
     Route::post('cart/items', [CartController::class, 'addItem']);
     Route::put('cart/items/{cartItem}', [CartController::class, 'updateItem']);
