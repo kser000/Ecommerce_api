@@ -32,15 +32,13 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('orders', [OrderController::class, 'index']);
     Route::get('orders/{order}', [OrderController::class, 'show']);
 
-    Route::middleware('admin')->group(function () {
-        Route::post('products', [ProductController::class, 'store']);
-        Route::put('products/{product}', [ProductController::class, 'update']);
-        Route::delete('products/{product}', [ProductController::class, 'destroy']);
+    Route::post('products', [ProductController::class, 'store']);
+    Route::put('products/{product}', [ProductController::class, 'update']);
+    Route::delete('products/{product}', [ProductController::class, 'destroy']);
 
-        Route::post('categories', [CategoryController::class, 'store']);
-        Route::put('categories/{category}', [CategoryController::class, 'update']);
-        Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
+    Route::post('categories', [CategoryController::class, 'store']);
+    Route::put('categories/{category}', [CategoryController::class, 'update']);
+    Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
 
-        Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus']);
-    });
+    Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus']);
 });

@@ -49,6 +49,8 @@ class CategoryController extends Controller
             'parent_id' => ['nullable', 'exists:categories,id'],
         ]);
 
+        $this->authorize('create', Category::class);
+
         $data['slug'] = Str::slug($data['name']);
 
         $category = Category::create($data);
@@ -72,6 +74,8 @@ class CategoryController extends Controller
     )]
     public function update(Request $request, Category $category): JsonResponse
     {
+        $this->authorize('update', $category);
+
         $data = $request->validate([
             'name'      => ['sometimes', 'string', 'max:100'],
             'parent_id' => ['nullable', 'exists:categories,id'],
@@ -96,6 +100,8 @@ class CategoryController extends Controller
     )]
     public function destroy(Category $category): JsonResponse
     {
+        $this->authorize('delete', $category);
+
         $category->delete();
 
         return response()->json(null, 204);

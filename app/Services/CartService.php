@@ -55,8 +55,6 @@ class CartService
 
     public function updateItem(User $user, CartItem $item, int $quantity): CartItem
     {
-        $this->authorizeItem($user, $item);
-
         if ($item->product->stock < $quantity) {
             throw new HttpResponseException(
                 response()->json(['message' => 'Insufficient stock.'], 422)
@@ -68,9 +66,8 @@ class CartService
         return $item->load('product');
     }
 
-    public function removeItem(User $user, CartItem $item): void
+    public function removeItem(CartItem $item): void
     {
-        $this->authorizeItem($user, $item);
         $item->delete();
     }
 
@@ -78,14 +75,5 @@ class CartService
     {
         $cart = $user->cart;
         $cart?->items()->delete();
-    }
-
-    private function authorizeItem(User $user, CartItem $item): void
-    {
-        if ($item->cart->user_id !== $user->id) {
-            throw new HttpResponseException(
-                response()->json(['message' => 'Forbidden.'], 403)
-            );
-        }
     }
 }

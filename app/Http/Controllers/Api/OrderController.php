@@ -47,9 +47,7 @@ class OrderController extends Controller
     )]
     public function show(Request $request, Order $order): mixed
     {
-        if ($order->user_id !== $request->user()->id && ! $request->user()->isAdmin()) {
-            return response()->json(['message' => 'Forbidden.'], 403);
-        }
+        $this->authorize('view', $order);
 
         return new OrderResource($order->load('items'));
     }
@@ -102,6 +100,8 @@ class OrderController extends Controller
     )]
     public function updateStatus(Request $request, Order $order): mixed
     {
+        $this->authorize('updateStatus', $order);
+
         $request->validate([
             'status' => ['required', 'in:paid,shipped,delivered,cancelled'],
         ]);

@@ -7,7 +7,6 @@ use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -92,6 +91,8 @@ class ProductController extends Controller
     )]
     public function store(StoreProductRequest $request): mixed
     {
+        $this->authorize('create', Product::class);
+
         $data = $request->validated();
         $data['slug'] = $data['slug'] ?? Str::slug($data['name']);
 
@@ -121,6 +122,8 @@ class ProductController extends Controller
     )]
     public function update(UpdateProductRequest $request, Product $product): mixed
     {
+        $this->authorize('update', $product);
+
         $data = $request->validated();
 
         if (isset($data['name']) && ! isset($data['slug'])) {
@@ -147,6 +150,8 @@ class ProductController extends Controller
     )]
     public function destroy(Product $product): mixed
     {
+        $this->authorize('delete', $product);
+
         Cache::forget("products:show:{$product->id}");
 
         $product->delete();

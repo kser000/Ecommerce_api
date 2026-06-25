@@ -86,6 +86,8 @@ class CartController extends Controller
             'quantity' => ['required', 'integer', 'min:1'],
         ]);
 
+        $this->authorize('modify', $cartItem);
+
         $item = $this->cartService->updateItem($request->user(), $cartItem, $data['quantity']);
 
         return new CartItemResource($item);
@@ -101,7 +103,9 @@ class CartController extends Controller
     )]
     public function removeItem(Request $request, CartItem $cartItem): mixed
     {
-        $this->cartService->removeItem($request->user(), $cartItem);
+        $this->authorize('modify', $cartItem);
+
+        $this->cartService->removeItem($cartItem);
 
         return response()->json(null, 204);
     }
