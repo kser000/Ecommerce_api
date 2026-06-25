@@ -22,7 +22,7 @@ class OrderService
             $total      = '0';
             $orderItems = [];
 
-            foreach ($cart->items as $item) {
+            foreach ($cart->items->sortBy('product_id') as $item) {
                 $product = $item->product;
 
                 if (! $product || ! $product->is_active) {
