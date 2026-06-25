@@ -116,33 +116,39 @@ class ProductTest extends TestCase
 
     public function test_cache_is_cleared_after_product_update(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
-        $product = Product::factory()->create(['name' => 'Old Name']);
-        $cacheKey = "products:show:{$product->id}";
+        $admin    = User::factory()->create(['role' => 'admin']);
+        $product  = Product::factory()->create(['name' => 'Old Name']);
+        $showKey  = "products:show:{$product->id}";
 
         $this->getJson("/api/products/{$product->id}");
-        $this->assertTrue(Cache::has($cacheKey));
+        $this->assertTrue(Cache::has($showKey));
+
+        $generationBefore = Cache::get('products:generation', 0);
 
         $this->actingAs($admin)
             ->putJson("/api/products/{$product->id}", ['name' => 'New Name'])
             ->assertStatus(200);
 
-        $this->assertFalse(Cache::has($cacheKey));
+        $this->assertFalse(Cache::has($showKey));
+        $this->assertGreaterThan($generationBefore, Cache::get('products:generation', 0));
     }
 
     public function test_cache_is_cleared_after_product_delete(): void
     {
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin   = User::factory()->create(['role' => 'admin']);
         $product = Product::factory()->create();
-        $cacheKey = "products:show:{$product->id}";
+        $showKey = "products:show:{$product->id}";
 
         $this->getJson("/api/products/{$product->id}");
-        $this->assertTrue(Cache::has($cacheKey));
+        $this->assertTrue(Cache::has($showKey));
+
+        $generationBefore = Cache::get('products:generation', 0);
 
         $this->actingAs($admin)
             ->deleteJson("/api/products/{$product->id}")
             ->assertStatus(204);
 
-        $this->assertFalse(Cache::has($cacheKey));
+        $this->assertFalse(Cache::has($showKey));
+        $this->assertGreaterThan($generationBefore, Cache::get('products:generation', 0));
     }
 }

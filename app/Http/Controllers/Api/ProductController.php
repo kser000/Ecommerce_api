@@ -28,7 +28,8 @@ class ProductController extends Controller
     )]
     public function index(Request $request): mixed
     {
-        $cacheKey = 'products:list:' . md5(serialize($request->only(['search', 'category_id', 'per_page', 'page'])));
+        $generation = Cache::get('products:generation', 1);
+        $cacheKey   = "products:list:g{$generation}:" . md5(serialize($request->only(['search', 'category_id', 'per_page', 'page'])));
 
         $products = Cache::remember($cacheKey, 60, function () use ($request) {
             $query = Product::with('category')->active();
@@ -98,7 +99,7 @@ class ProductController extends Controller
 
         $product = Product::create($data);
 
-        Cache::forget("products:show:{$product->id}");
+        $this->invalidateProductCache($product->id);
 
         return (new ProductResource($product->load('category')))->response()->setStatusCode(201);
     }
@@ -132,7 +133,7 @@ class ProductController extends Controller
 
         $product->update($data);
 
-        Cache::forget("products:show:{$product->id}");
+        $this->invalidateProductCache($product->id);
 
         return new ProductResource($product->load('category'));
     }
@@ -152,10 +153,16 @@ class ProductController extends Controller
     {
         $this->authorize('delete', $product);
 
-        Cache::forget("products:show:{$product->id}");
+        $this->invalidateProductCache($product->id);
 
         $product->delete();
 
         return response()->json(null, 204);
+    }
+
+    private function invalidateProductCache(int $productId): void
+    {
+        Cache::forget("products:show:{$productId}");
+        Cache::increment('products:generation');
     }
 }
