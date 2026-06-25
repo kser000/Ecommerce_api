@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\BusinessException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -21,6 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->render(function (BusinessException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->getStatusCode());
+        });
+
         $exceptions->render(function (ModelNotFoundException $e) {
             return response()->json(['message' => 'Resource not found.'], 404);
         });

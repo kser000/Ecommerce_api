@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
+use App\Exceptions\BusinessException;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\User;
-use Illuminate\Http\Exceptions\HttpResponseException;
 
 class CartService
 {
@@ -18,15 +18,11 @@ class CartService
     public function addItem(User $user, Product $product, int $quantity): CartItem
     {
         if (! $product->is_active) {
-            throw new HttpResponseException(
-                response()->json(['message' => 'Product is not available.'], 422)
-            );
+            throw new BusinessException('Product is not available.');
         }
 
         if ($product->stock < $quantity) {
-            throw new HttpResponseException(
-                response()->json(['message' => 'Insufficient stock.'], 422)
-            );
+            throw new BusinessException('Insufficient stock.');
         }
 
         $cart = $this->getOrCreateCart($user);
@@ -37,9 +33,7 @@ class CartService
             $newQty = $item->quantity + $quantity;
 
             if ($product->stock < $newQty) {
-                throw new HttpResponseException(
-                    response()->json(['message' => 'Insufficient stock.'], 422)
-                );
+                throw new BusinessException('Insufficient stock.');
             }
 
             $item->update(['quantity' => $newQty]);
@@ -56,9 +50,7 @@ class CartService
     public function updateItem(User $user, CartItem $item, int $quantity): CartItem
     {
         if ($item->product->stock < $quantity) {
-            throw new HttpResponseException(
-                response()->json(['message' => 'Insufficient stock.'], 422)
-            );
+            throw new BusinessException('Insufficient stock.');
         }
 
         $item->update(['quantity' => $quantity]);
