@@ -28,11 +28,11 @@ class Order extends Model
     public function canTransitionTo(string $newStatus): bool
     {
         $allowed = [
-            'pending'   => ['paid', 'cancelled'],
-            'paid'      => ['shipped', 'cancelled'],
-            'shipped'   => ['delivered'],
-            'delivered' => [],
-            'cancelled' => [],
+            'pending_payment' => ['paid', 'cancelled'],
+            'paid'            => ['shipped', 'cancelled'],
+            'shipped'         => ['delivered'],
+            'delivered'       => [],
+            'cancelled'       => [],
         ];
 
         return in_array($newStatus, $allowed[$this->status] ?? []);

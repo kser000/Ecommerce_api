@@ -73,9 +73,13 @@ class OrderController extends Controller
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $order = $this->orderService->checkout($request->user(), $request->note);
+        ['order' => $order, 'payment_url' => $paymentUrl] =
+            $this->orderService->checkout($request->user(), $request->note);
 
-        return (new OrderResource($order))->response()->setStatusCode(201);
+        return (new OrderResource($order))
+            ->additional(['payment_url' => $paymentUrl])
+            ->response()
+            ->setStatusCode(201);
     }
 
     #[OA\Patch(
@@ -103,7 +107,7 @@ class OrderController extends Controller
         $this->authorize('updateStatus', $order);
 
         $request->validate([
-            'status' => ['required', 'in:paid,shipped,delivered,cancelled'],
+            'status' => ['required', 'in:paid,shipped,delivered,cancelled,pending_payment'],
         ]);
 
         $order = $this->orderService->updateStatus($order, $request->status);

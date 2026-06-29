@@ -44,7 +44,7 @@ class OrderTest extends TestCase
             ->assertJsonPath('message', 'Cart is empty.');
     }
 
-    public function test_customer_can_checkout_and_stock_is_decremented(): void
+    public function test_checkout_creates_pending_payment_order_and_returns_payment_url(): void
     {
         $this->actingAs($this->customer)
             ->postJson('/api/cart/items', [
@@ -55,12 +55,48 @@ class OrderTest extends TestCase
         $response = $this->actingAs($this->customer)
             ->postJson('/api/orders')
             ->assertStatus(201)
-            ->assertJsonStructure(['data' => ['id', 'status', 'total_amount', 'items']]);
+            ->assertJsonStructure(['data' => ['id', 'status', 'total_amount', 'items'], 'payment_url']);
 
-        $this->assertEquals('pending', $response->json('data.status'));
+        $this->assertEquals('pending_payment', $response->json('data.status'));
         $this->assertEquals('300.00', $response->json('data.total_amount'));
+        $this->assertStringContainsString('/api/payments/dev/complete', $response->json('payment_url'));
 
+        // 庫存在結帳後立即扣除（預留）
         $this->assertEquals(7, $this->product->fresh()->stock);
+    }
+
+    public function test_payment_success_transitions_order_to_paid(): void
+    {
+        $this->actingAs($this->customer)
+            ->postJson('/api/cart/items', ['product_id' => $this->product->id, 'quantity' => 1]);
+
+        $checkoutResponse = $this->actingAs($this->customer)->postJson('/api/orders');
+        $paymentUrl       = $checkoutResponse->json('payment_url');
+
+        // 從付款 URL 取出 key 參數，模擬金流 callback
+        parse_str(parse_url($paymentUrl, PHP_URL_QUERY), $params);
+
+        $this->postJson('/api/payments/dev/complete?key=' . $params['key'] . '&result=success')
+            ->assertStatus(200)
+            ->assertJsonPath('data.status', 'paid');
+    }
+
+    public function test_payment_failure_cancels_order_and_restores_stock(): void
+    {
+        $this->actingAs($this->customer)
+            ->postJson('/api/cart/items', ['product_id' => $this->product->id, 'quantity' => 3]);
+
+        $checkoutResponse = $this->actingAs($this->customer)->postJson('/api/orders');
+        $paymentUrl       = $checkoutResponse->json('payment_url');
+
+        parse_str(parse_url($paymentUrl, PHP_URL_QUERY), $params);
+
+        // 付款失敗
+        $this->postJson('/api/payments/dev/complete?key=' . $params['key'] . '&result=fail')
+            ->assertStatus(422);
+
+        // 庫存應該還原
+        $this->assertEquals(10, $this->product->fresh()->stock);
     }
 
     public function test_cart_is_cleared_after_checkout(): void
@@ -114,7 +150,7 @@ class OrderTest extends TestCase
             ->postJson('/api/cart/items', ['product_id' => $this->product->id, 'quantity' => 1]);
 
         $orderResponse = $this->actingAs($otherUser)->postJson('/api/orders');
-        $orderId = $orderResponse->json('data.id');
+        $orderId       = $orderResponse->json('data.id');
 
         $this->actingAs($this->customer)
             ->getJson("/api/orders/{$orderId}")
@@ -126,13 +162,17 @@ class OrderTest extends TestCase
         $this->actingAs($this->customer)
             ->postJson('/api/cart/items', ['product_id' => $this->product->id, 'quantity' => 1]);
 
-        $orderResponse = $this->actingAs($this->customer)->postJson('/api/orders');
-        $orderId = $orderResponse->json('data.id');
+        $checkoutResponse = $this->actingAs($this->customer)->postJson('/api/orders');
+        $orderId          = $checkoutResponse->json('data.id');
+        $paymentUrl       = $checkoutResponse->json('payment_url');
+
+        parse_str(parse_url($paymentUrl, PHP_URL_QUERY), $params);
+        $this->postJson('/api/payments/dev/complete?key=' . $params['key'] . '&result=success');
 
         $this->actingAs($this->admin)
-            ->patchJson("/api/orders/{$orderId}/status", ['status' => 'paid'])
+            ->patchJson("/api/orders/{$orderId}/status", ['status' => 'shipped'])
             ->assertStatus(200)
-            ->assertJsonPath('data.status', 'paid');
+            ->assertJsonPath('data.status', 'shipped');
     }
 
     public function test_invalid_status_transition_is_rejected(): void
@@ -140,8 +180,8 @@ class OrderTest extends TestCase
         $this->actingAs($this->customer)
             ->postJson('/api/cart/items', ['product_id' => $this->product->id, 'quantity' => 1]);
 
-        $orderResponse = $this->actingAs($this->customer)->postJson('/api/orders');
-        $orderId = $orderResponse->json('data.id');
+        $checkoutResponse = $this->actingAs($this->customer)->postJson('/api/orders');
+        $orderId          = $checkoutResponse->json('data.id');
 
         $this->actingAs($this->admin)
             ->patchJson("/api/orders/{$orderId}/status", ['status' => 'delivered'])

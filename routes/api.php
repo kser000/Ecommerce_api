@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,3 +43,6 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 
     Route::patch('orders/{order}/status', [OrderController::class, 'updateStatus']);
 });
+
+// 金流 callback（dev 模擬）：公開端點，不需要登入
+Route::post('payments/dev/complete', [PaymentController::class, 'devComplete'])->middleware('throttle:api');
