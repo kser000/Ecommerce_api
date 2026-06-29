@@ -13,8 +13,8 @@ return new class extends Migration
             return;
         }
 
-        DB::statement("ALTER TABLE orders MODIFY COLUMN status ENUM('pending_payment','paid','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending_payment'");
         DB::statement("UPDATE orders SET status = 'pending_payment' WHERE status = 'pending'");
+        DB::statement("ALTER TABLE orders MODIFY COLUMN status ENUM('pending_payment','paid','shipped','delivered','cancelled') NOT NULL DEFAULT 'pending_payment'");
     }
 
     public function down(): void
